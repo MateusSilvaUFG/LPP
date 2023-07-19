@@ -1,4 +1,4 @@
-const
+const transactionsUl = document.querySelector('#transactions')
 
 const dummyTransactions = [
     {id: 1,name: 'Bolo de brigadeiro', amount: -20},
@@ -17,7 +17,11 @@ const addTransactionIntoDOM = transaction =>{
     li.innerHTML = `
      ${transaction.name} <span>${operator} R$ ${amoutWithoutOperato} </span><button class="delete-btn"
     `
-    console.log(li)
+   transactionsUl.append(li)
 }
 
-addTransactionIntoDOM(dummyTransactions[0])
+const init = () => {
+    dummyTransactions.forEach(addTransactionIntoDOM)
+}
+
+init()
