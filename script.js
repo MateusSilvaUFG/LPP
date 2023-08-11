@@ -1,27 +1,114 @@
-const transactionsUl = document.querySelector('#transactions')
+// Selecionar elementos do DOM
+const transactionsUl = document.querySelector('#transactions');
+const incomeDisplay = document.querySelector('#money-plus');
+const expenseDisplay = document.querySelector('#money-minus');
+const balanceDisplay = document.querySelector('#balance');
+const form = document.querySelector('#form');
+const inputTransactionName = document.querySelector('#text');
+const inputTransactionAmount = document.querySelector('#amount');
 
-const dummyTransactions = [
-    {id: 1,name: 'Bolo de brigadeiro', amount: -20},
-    {id: 2,name: 'Salário', amount: 300},
-    {id: 3,name: 'Torta de Frango', amount: -10},
-    {id: 4,name: 'Violão', amount: 150}
-]
+// Recuperar transações do armazenamento local ou criar uma lista vazia
+const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
+let transactions = localStorage.getItem('transactions') !== null ? localStorageTransactions : [];
 
-const addTransactionIntoDOM = transaction =>{
-    const operator = transaction.amount < 0 ? '-' : '+'
-    const CSSlass = transaction.amout < 0 ? 'minus' : 'plus'
-    const amoutWithoutOperato =  Math.abs(transaction.amount)
-    const li = document.createElement('li')
+// Função para remover uma transação com base em seu ID
+const removeTransaction = ID => {
+    transactions = transactions.filter(transaction => transaction.id !== ID);
+    updateLocalStorage();
+    init(); // Atualiza o DOM após remover a transação
+}
 
-    li.classList.add(CSSlass)
+// Função para adicionar uma transação ao DOM
+const addTransactionIntoDOM = ({ amount, name, id }) => {
+    const operator = amount < 0 ? '-' : '+';
+    const CSSlass = amount < 0 ? 'minus' : 'plus';
+    const amoutWithoutOperator = Math.abs(amount);
+    const li = document.createElement('li');
+
+    li.classList.add(CSSlass);
     li.innerHTML = `
-     ${transaction.name} <span>${operator} R$ ${amoutWithoutOperato} </span><button class="delete-btn"
-    `
-   transactionsUl.append(li)
+        ${name}
+        <span>${operator} R$ ${amoutWithoutOperator} </span>
+        <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
+    transactionsUl.append(li);
 }
 
+// Funções para calcular as despesas, receitas e total
+const getExpenses = transactionsAmounts => Math.abs(transactionsAmounts
+    .filter(value => value < 0)
+    .reduce((accumulator, value) => accumulator + value, 0))
+    .toFixed(2);
+
+const getIncome = transactionsAmounts => transactionsAmounts
+    .filter(value => value > 0)
+    .reduce((accumlator, value) => accumlator + value, 0)
+    .toFixed(2);
+
+const getTotal = transactionsAmounts => transactionsAmounts
+    .reduce((accumulator, transaction) => accumulator + transaction, 0)
+    .toFixed(2);
+
+// Atualiza os valores de saldo, receitas e despesas no DOM
+const updateBalanceValues = () => {
+    const transactionsAmounts = transactions.map(({ amount }) => amount);
+    const total = getTotal(transactionsAmounts);
+    const income = getIncome(transactionsAmounts);
+    const expense = getExpenses(transactionsAmounts);
+
+    balanceDisplay.textContent = `R$ ${total}`;
+    incomeDisplay.textContent = `R$ ${income}`;
+    expenseDisplay.textContent = `R$ ${expense}`;
+}
+
+// Inicialização: limpa o DOM, adiciona as transações e atualiza os valores
 const init = () => {
-    dummyTransactions.forEach(addTransactionIntoDOM)
+    transactionsUl.innerHTML = '';
+    transactions.forEach(addTransactionIntoDOM);
+    updateBalanceValues();
 }
 
-init()
+init(); // Inicializa o aplicativo ao carregar
+
+// Função para atualizar o armazenamento local com as transações atuais
+const updateLocalStorage = () => {
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+}
+
+// Gera um ID aleatório
+const generateID = () => Math.round(Math.random() * 1000);
+
+// Adiciona uma transação à lista
+const addToTransactionsArray = (transactionName, transactionsAmounts) => {
+    transactions.push({ 
+        id: generateID(),
+        name: transactionName,
+        amount: Number(transactionsAmounts)
+    });
+}
+
+// Limpa os campos de entrada após o envio do formulário
+const cleanInputs = () => {
+    inputTransactionName.value = '';
+    inputTransactionAmount.value = '';
+}
+
+// Manipulador do evento de envio do formulário
+const handleFormSubmit = event => {
+    event.preventDefault();
+
+    const transactionName = inputTransactionName.value.trim();
+    const transactionsAmounts = inputTransactionAmount.value.trim();
+    const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
+
+    if (isSomeInputEmpty) {
+      alert('Por favor, prencha nome e valor da transação');      
+      return;
+    }
+
+    addToTransactionsArray(transactionName, transactionsAmounts);
+    init(); // Atualiza o DOM após adicionar a transação
+    updateLocalStorage();
+    cleanInputs();
+}
+
+form.addEventListener('submit', handleFormSubmit); // Escuta o envio do formulário
