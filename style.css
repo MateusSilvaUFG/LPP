@@ -24,12 +24,13 @@ body {
   width: 350px;
 }
 
-h1 {
+h1 { 
   letter-spacing: 1px;
   margin: 0;
   color: #2e75cc;
 }
 
+/* Adicionar transação */
 h3 {
   border-bottom: 1px solid #bbb;
   padding-bottom: 10px;

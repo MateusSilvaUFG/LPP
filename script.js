@@ -6,6 +6,9 @@ const balanceDisplay = document.querySelector('#balance');
 const form = document.querySelector('#form');
 const inputTransactionName = document.querySelector('#text');
 const inputTransactionAmount = document.querySelector('#amount');
+inputTransactionAmount.addEventListener("change", function() {
+    this.value = parseFloat(this.value).toFixed(2);
+});
 
 // Recuperar transações do armazenamento local ou criar uma lista vazia
 const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
@@ -18,17 +21,31 @@ const removeTransaction = ID => {
     init(); // Atualiza o DOM após remover a transação
 }
 
+const categoriesMapping = {
+    'manutencao-casa': 'Manutenção da Casa',
+    'saude': 'Saúde',
+    'comida': 'Comida',
+    'outros': 'Outros',
+    'comunicacao': 'Comunicação',
+    'despesas-pessoais': 'Despesas Pessoais'
+};
+
 // Função para adicionar uma transação ao DOM
-const addTransactionIntoDOM = ({ amount, name, id }) => {
+const addTransactionIntoDOM = ({ amount, name, id, category }) => {
     const operator = amount < 0 ? '-' : '+';
-    const CSSlass = amount < 0 ? 'minus' : 'plus';
-    const amoutWithoutOperator = Math.abs(amount);
+    const CSSClass = amount < 0 ? 'minus' : 'plus';
+    const amountWithoutOperator = Math.abs(amount);
     const li = document.createElement('li');
 
-    li.classList.add(CSSlass);
+    li.classList.add(CSSClass);
+    
+    let categoryDisplay = '';
+    if (amount < 0) {
+        categoryDisplay = `(${categoriesMapping[category]})`;
+    }
+
     li.innerHTML = `
-        ${name}
-        <span>${operator} R$ ${amoutWithoutOperator} </span>
+        ${name} <span>${operator} R$ ${amountWithoutOperator} ${categoryDisplay}</span>
         <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
     transactionsUl.append(li);
 }
@@ -78,13 +95,25 @@ const updateLocalStorage = () => {
 const generateID = () => Math.round(Math.random() * 1000);
 
 // Adiciona uma transação à lista
-const addToTransactionsArray = (transactionName, transactionsAmounts) => {
-    transactions.push({ 
-        id: generateID(),
-        name: transactionName,
-        amount: Number(transactionsAmounts)
-    });
+const addToTransactionsArray = (transactionName, transactionsAmounts, category) => {
+    const amount = Number(transactionsAmounts);
+    
+    if (amount < 0) { // Verifica se é uma despesa (gasto)
+        transactions.push({
+            id: generateID(),
+            name: transactionName,
+            amount: amount,
+            category: category
+        });
+    } else {
+        transactions.push({
+            id: generateID(),
+            name: transactionName,
+            amount: amount
+        });
+    }
 }
+
 
 // Limpa os campos de entrada após o envio do formulário
 const cleanInputs = () => {
@@ -98,15 +127,18 @@ const handleFormSubmit = event => {
 
     const transactionName = inputTransactionName.value.trim();
     const transactionsAmounts = inputTransactionAmount.value.trim();
+    const amount = Number(transactionsAmounts);
+    const category = document.querySelector('#category').value;
+
     const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
 
     if (isSomeInputEmpty) {
-      alert('Por favor, prencha nome e valor da transação');      
+      alert('Por favor, preencha nome e valor da transação');
       return;
     }
 
-    addToTransactionsArray(transactionName, transactionsAmounts);
-    init(); // Atualiza o DOM após adicionar a transação
+    addToTransactionsArray(transactionName, transactionsAmounts, amount < 0 ? category : undefined); // Atribui a categoria apenas para despesas (gastos)
+    init();
     updateLocalStorage();
     cleanInputs();
 }
