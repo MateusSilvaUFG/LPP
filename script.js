@@ -7,7 +7,20 @@
     const inputTransactionName = document.querySelector('#text');
     const inputTransactionAmount = document.querySelector('#amount');
 
-
+     const transactionsByMonth = {
+        '01': [], // Janeiro
+        '02': [], // Fevereiro
+        '03': [], // Março
+        '04': [], // Abril
+        '05': [], // Maio
+        '06': [], // Junho
+        '07': [], // Julho
+        '08': [], // Agosto
+        '09': [], // Setembro
+        '10': [], // Outubro
+        '11': [], // Novembro
+        '12': [], // Dezembro
+    };
 inputTransactionAmount.addEventListener("change", function() {
     this.value = parseFloat(this.value).toFixed(2);
 });
@@ -32,25 +45,46 @@ const categoriesMapping = {
     'despesas-pessoais': 'Despesas Pessoais'
 };
 
+const transactionMonthSelect = document.querySelector('#transaction-month');
+
+transactionMonthSelect.addEventListener('change', () => {
+    const selectedMonth = transactionMonthSelect.value;
+    const transactionsForSelectedMonth = transactions.filter(transaction => transaction.month === selectedMonth);
+    updateTransactionsList(transactionsForSelectedMonth);
+    updateBalanceValues();
+    updateGraph(); // Atualize o gráfico com base no mês selecionado
+});
+
+const updateTransactionsList = (transactions) => {
+    transactionsUl.innerHTML = ''; // Limpa a lista de transações atual
+
+    transactions.forEach(transaction => {
+        addTransactionIntoDOM(transaction);
+    });
+};
+
+
 // Função para adicionar uma transação ao DOM
-const addTransactionIntoDOM = ({ amount, name, id, category }) => {
+const addTransactionIntoDOM = ({ amount, name, id, category, month }) => {
     const operator = amount < 0 ? '-' : '+';
     const CSSClass = amount < 0 ? 'minus' : 'plus';
     const amountWithoutOperator = Math.abs(amount);
     const li = document.createElement('li');
 
-    li.classList.add(CSSClass);
-    
-    let categoryDisplay = '';
-    if (amount < 0) {
-        categoryDisplay = `(${categoriesMapping[category]})`;
-    }
+    if (month === transactionMonthSelect.value) { // Verifica se é do mês selecionado
+        li.classList.add(CSSClass);
 
-    li.innerHTML = `
-        ${name} <span>${operator} R$ ${amountWithoutOperator} ${categoryDisplay}</span>
-        <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
-    transactionsUl.append(li);
-}
+        let categoryDisplay = '';
+        if (amount < 0) {
+            categoryDisplay = `(${categoriesMapping[category]})`;
+        }
+
+        li.innerHTML = `
+            ${name} <span>${operator} R$ ${amountWithoutOperator} ${categoryDisplay}</span>
+            <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
+        transactionsUl.append(li);
+    }
+};
 
 // Funções para calcular as despesas, receitas e total
 const getExpenses = transactionsAmounts => Math.abs(transactionsAmounts
@@ -60,7 +94,7 @@ const getExpenses = transactionsAmounts => Math.abs(transactionsAmounts
 
 const getIncome = transactionsAmounts => transactionsAmounts
     .filter(value => value > 0)
-    .reduce((accumlator, value) => accumlator + value, 0)
+    .reduce((accumulator, value) => accumulator + value, 0)
     .toFixed(2);
 
 const getTotal = transactionsAmounts => transactionsAmounts
@@ -69,7 +103,10 @@ const getTotal = transactionsAmounts => transactionsAmounts
 
 // Atualiza os valores de saldo, receitas e despesas no DOM
 const updateBalanceValues = () => {
-    const transactionsAmounts = transactions.map(({ amount }) => amount);
+    const selectedMonth = transactionMonthSelect.value;
+    const transactionsForSelectedMonth = transactionsByMonth[selectedMonth];
+    const transactionsAmounts = transactionsForSelectedMonth.map(({ amount }) => amount);
+
     const total = getTotal(transactionsAmounts);
     const income = getIncome(transactionsAmounts);
     const expense = getExpenses(transactionsAmounts);
@@ -77,9 +114,11 @@ const updateBalanceValues = () => {
     balanceDisplay.textContent = `R$ ${total}`;
     incomeDisplay.textContent = `R$ ${income}`;
     expenseDisplay.textContent = `R$ ${expense}`;
-}
+};
 
-const calculateCategoryTotals = () => {
+
+
+const calculateCategoryTotals = (transactions) => {
     const categoryTotals = {};
 
     transactions.forEach(transaction => {
@@ -100,10 +139,16 @@ const calculateCategoryTotals = () => {
 
 
 
+
+// ...
+
 // ...
 
 const updateGraph = () => {
-    const categoryTotals = calculateCategoryTotals();
+    const selectedMonth = transactionMonthSelect.value;
+    const transactionsForSelectedMonth = transactions.filter(transaction => transaction.month === selectedMonth);
+
+    const categoryTotals = calculateCategoryTotals(transactionsForSelectedMonth);
     const negativeCategoryNames = Object.keys(categoryTotals).filter(category => categoryTotals[category] < 0);
 
     const data = negativeCategoryNames.map(category => ({
@@ -112,8 +157,18 @@ const updateGraph = () => {
         type: 'bar'
     }));
 
-    Plotly.newPlot('grafico', data);
+    const layout = {
+        xaxis: {
+            tickangle: -45,
+            automargin: true
+        }
+    };
+
+    Plotly.newPlot('grafico', data, layout);
 };
+
+// ...
+
 
 
 
@@ -126,8 +181,10 @@ const updateGraph = () => {
 const init = () => {
     transactionsUl.innerHTML = '';
     transactions.forEach(addTransactionIntoDOM);
+    updateTransactionsList(transactions);
     updateBalanceValues();
     updateGraph();
+    
 };
 
 init(); // Inicializa o aplicativo ao carregar
@@ -144,14 +201,24 @@ const generateID = () => Math.round(Math.random() * 1000);
 const addToTransactionsArray = (transactionName, transactionsAmounts, category, selectedMonth) => {
     const amount = Number(transactionsAmounts);
 
-    transactions.push({
+    const newTransaction = {
         id: generateID(),
         name: transactionName,
         amount: amount,
         category: category,
         month: selectedMonth // Adicione o mês à transação
-    });
-}
+    };
+
+    transactions.push(newTransaction); // Adicionar à lista completa de transações
+
+    // Adicionar à lista de transações do mês correspondente
+    transactionsByMonth[selectedMonth].push(newTransaction); // Adicione a transação ao mês correto
+
+    // Atualizar a exibição dos dados
+    init();
+    updateLocalStorage();
+    cleanInputs();
+};
 
 
 
