@@ -5,10 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./style.css" />
     <title>Controle de despesas</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.25.2.min.js" charset="utf-8"></script>
   </head>
   <body>
     <h2>Controle de despesas</h2>
+  
+
+    <div class="form-control">
+      <label for="transaction-month">Selecione o mês</label>
+      <select id="transaction-month">
+        <option value="01">Janeiro</option>
+        <option value="02">Fevereiro</option>
+        <option value="03">Março</option>
+        <option value="04">Abril</option>
+        <option value="05">Maio</option>
+        <option value="06">Junho</option>
+        <option value="07">Julho</option>
+        <option value="08">Agosto</option>
+        <option value="09">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+      </select>
+    </div>
+    
 
     <div class="container">
       <h4>Saldo atual</h4>
@@ -31,10 +51,11 @@
       
       <ul id="transactions" class="transactions"> </ul>
 
-      <h3>Adicionar transação</h3>
+      <div id="grafico"></div>
+       
       
 
-
+      <h3>Adicionar transação</h3>
 
       <div class="form-control">
         <label for="category">Categoria</label>
@@ -61,10 +82,11 @@
         </div>
 
         <button class="btn">Adicionar</button>
-      </form>
+        
 
+      </form>
       
-      
+
     </div>
 
     <script src="script.js"></script>

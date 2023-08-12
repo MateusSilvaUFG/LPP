@@ -1,11 +1,13 @@
-// Selecionar elementos do DOM
-const transactionsUl = document.querySelector('#transactions');
-const incomeDisplay = document.querySelector('#money-plus');
-const expenseDisplay = document.querySelector('#money-minus');
-const balanceDisplay = document.querySelector('#balance');
-const form = document.querySelector('#form');
-const inputTransactionName = document.querySelector('#text');
-const inputTransactionAmount = document.querySelector('#amount');
+// Selecionar elementos do DOMdocument.addEventListener("DOMContentLoaded", function() {
+    const transactionsUl = document.querySelector('#transactions');
+    const incomeDisplay = document.querySelector('#money-plus');
+    const expenseDisplay = document.querySelector('#money-minus');
+    const balanceDisplay = document.querySelector('#balance');
+    const form = document.querySelector('#form');
+    const inputTransactionName = document.querySelector('#text');
+    const inputTransactionAmount = document.querySelector('#amount');
+
+
 inputTransactionAmount.addEventListener("change", function() {
     this.value = parseFloat(this.value).toFixed(2);
 });
@@ -77,12 +79,56 @@ const updateBalanceValues = () => {
     expenseDisplay.textContent = `R$ ${expense}`;
 }
 
+const calculateCategoryTotals = () => {
+    const categoryTotals = {};
+
+    transactions.forEach(transaction => {
+        const categoryName = transaction.category || 'Outros';
+        const amount = transaction.amount;
+
+        if (amount < 0) {
+            if (categoryTotals[categoryName]) {
+                categoryTotals[categoryName] += amount;
+            } else {
+                categoryTotals[categoryName] = amount;
+            }
+        }
+    });
+
+    return categoryTotals;
+};
+
+
+
+// ...
+
+const updateGraph = () => {
+    const categoryTotals = calculateCategoryTotals();
+    const negativeCategoryNames = Object.keys(categoryTotals).filter(category => categoryTotals[category] < 0);
+
+    const data = negativeCategoryNames.map(category => ({
+        x: [categoriesMapping[category] || category],
+        y: [categoryTotals[category]],
+        type: 'bar'
+    }));
+
+    Plotly.newPlot('grafico', data);
+};
+
+
+
+
+
+// ...
+
+
 // Inicialização: limpa o DOM, adiciona as transações e atualiza os valores
 const init = () => {
     transactionsUl.innerHTML = '';
     transactions.forEach(addTransactionIntoDOM);
     updateBalanceValues();
-}
+    updateGraph();
+};
 
 init(); // Inicializa o aplicativo ao carregar
 
@@ -95,24 +141,18 @@ const updateLocalStorage = () => {
 const generateID = () => Math.round(Math.random() * 1000);
 
 // Adiciona uma transação à lista
-const addToTransactionsArray = (transactionName, transactionsAmounts, category) => {
+const addToTransactionsArray = (transactionName, transactionsAmounts, category, selectedMonth) => {
     const amount = Number(transactionsAmounts);
-    
-    if (amount < 0) { // Verifica se é uma despesa (gasto)
-        transactions.push({
-            id: generateID(),
-            name: transactionName,
-            amount: amount,
-            category: category
-        });
-    } else {
-        transactions.push({
-            id: generateID(),
-            name: transactionName,
-            amount: amount
-        });
-    }
+
+    transactions.push({
+        id: generateID(),
+        name: transactionName,
+        amount: amount,
+        category: category,
+        month: selectedMonth // Adicione o mês à transação
+    });
 }
+
 
 
 // Limpa os campos de entrada após o envio do formulário
@@ -122,25 +162,28 @@ const cleanInputs = () => {
 }
 
 // Manipulador do evento de envio do formulário
-const handleFormSubmit = event => {
-    event.preventDefault();
+  const handleFormSubmit = event => {
+        event.preventDefault();
 
-    const transactionName = inputTransactionName.value.trim();
-    const transactionsAmounts = inputTransactionAmount.value.trim();
-    const amount = Number(transactionsAmounts);
-    const category = document.querySelector('#category').value;
+        const transactionName = inputTransactionName.value.trim();
+        const transactionsAmounts = inputTransactionAmount.value.trim();
+        const amount = Number(transactionsAmounts);
+        const category = document.querySelector('#category').value;
+        const selectedMonth = document.querySelector('#transaction-month').value;
 
-    const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
+        const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
 
-    if (isSomeInputEmpty) {
-      alert('Por favor, preencha nome e valor da transação');
-      return;
+        if (isSomeInputEmpty) {
+            alert('Por favor, preencha nome e valor da transação');
+            return;
+        }
+
+        addToTransactionsArray(transactionName, transactionsAmounts, category, selectedMonth);
+        init();
+        updateLocalStorage();
+        cleanInputs();
     }
 
-    addToTransactionsArray(transactionName, transactionsAmounts, amount < 0 ? category : undefined); // Atribui a categoria apenas para despesas (gastos)
-    init();
-    updateLocalStorage();
-    cleanInputs();
-}
+
 
 form.addEventListener('submit', handleFormSubmit); // Escuta o envio do formulário
