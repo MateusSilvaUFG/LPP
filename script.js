@@ -12,7 +12,7 @@
         '02': [], // Fevereiro
         '03': [], // Março
         '04': [], // Abril
-        '05': [], // Maio
+        '05': [], // Maio   
         '06': [], // Junho
         '07': [], // Julho
         '08': [], // Agosto
@@ -31,10 +31,26 @@ let transactions = localStorage.getItem('transactions') !== null ? localStorageT
 
 // Função para remover uma transação com base em seu ID
 const removeTransaction = ID => {
+    const removedTransaction = transactions.find(transaction => transaction.id === ID);
+    
+    if (!removedTransaction) {
+        return;
+    }
+
+    const removedAmount = removedTransaction.amount;
+    const selectedMonth = removedTransaction.month;
+
     transactions = transactions.filter(transaction => transaction.id !== ID);
+    transactionsByMonth[selectedMonth] = transactionsByMonth[selectedMonth].filter(transaction => transaction.id !== ID);
+
     updateLocalStorage();
+    updateBalanceValues();
+    updateGraph(); // Se necessário, atualize o gráfico após remover a transação
+    updateTransactionsList(transactionsByMonth[selectedMonth]); // Atualize a lista de transações do mês
+
     init(); // Atualiza o DOM após remover a transação
 }
+
 
 const categoriesMapping = {
     'manutencao-casa': 'Manutenção da Casa',
@@ -63,28 +79,34 @@ const updateTransactionsList = (transactions) => {
     });
 };
 
-
 // Função para adicionar uma transação ao DOM
 const addTransactionIntoDOM = ({ amount, name, id, category, month }) => {
     const operator = amount < 0 ? '-' : '+';
     const CSSClass = amount < 0 ? 'minus' : 'plus';
     const amountWithoutOperator = Math.abs(amount);
     const li = document.createElement('li');
-
-    if (month === transactionMonthSelect.value) { // Verifica se é do mês selecionado
-        li.classList.add(CSSClass);
-
-        let categoryDisplay = '';
-        if (amount < 0) {
-            categoryDisplay = `(${categoriesMapping[category]})`;
-        }
-
-        li.innerHTML = `
-            ${name} <span>${operator} R$ ${amountWithoutOperator} ${categoryDisplay}</span>
-            <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
-        transactionsUl.append(li);
+  
+    if (month === transactionMonthSelect.value) {
+      li.classList.add(CSSClass);
+  
+      let categoryDisplay = '';
+      if (amount < 0) {
+        categoryDisplay = `(${categoriesMapping[category]})`;
+      }
+  
+      let transactionTypeDisplay = '';
+      if (category === 'income') {
+        transactionTypeDisplay = '(Receita)';
+      } else if (category === 'expense') {
+        transactionTypeDisplay = '(Despesa)';
+      }
+  
+      li.innerHTML = `
+        ${name} <span>${operator} R$ ${amountWithoutOperator} ${categoryDisplay} ${transactionTypeDisplay}</span>
+        <button class="delete-btn" onClick="removeTransaction(${id})">X</button>`;
+      transactionsUl.append(li);
     }
-};
+  };
 
 // Funções para calcular as despesas, receitas e total
 const getExpenses = transactionsAmounts => Math.abs(transactionsAmounts
@@ -117,7 +139,6 @@ const updateBalanceValues = () => {
 };
 
 
-
 const calculateCategoryTotals = (transactions) => {
     const categoryTotals = {};
 
@@ -137,13 +158,6 @@ const calculateCategoryTotals = (transactions) => {
     return categoryTotals;
 };
 
-
-
-
-// ...
-
-// ...
-
 const updateGraph = () => {
     const selectedMonth = transactionMonthSelect.value;
     const transactionsForSelectedMonth = transactions.filter(transaction => transaction.month === selectedMonth);
@@ -152,30 +166,33 @@ const updateGraph = () => {
     const negativeCategoryNames = Object.keys(categoryTotals).filter(category => categoryTotals[category] < 0);
 
     const data = negativeCategoryNames.map(category => ({
-        x: [categoriesMapping[category] || category],
         y: [categoryTotals[category]],
-        type: 'bar'
+        type: 'bar',
+        name: categoriesMapping[category] || category
     }));
 
     const layout = {
         xaxis: {
             tickangle: -45,
             automargin: true
+        },
+        legend: {
+            orientation: 'h', // Coloca a legenda abaixo das barras (horizontal)
+            x: 0.5, // Centraliza a legenda horizontalmente
+            y: -0.15 // Move a legenda um pouco para baixo
+        },
+        margin: {
+            l: 40,
+            r: 40,
+            t: 40,
+            b: 80 // Aumenta a margem inferior para acomodar a legenda abaixo das barras
         }
     };
 
     Plotly.newPlot('grafico', data, layout);
 };
 
-// ...
-
-
-
-
-
-
-// ...
-
+  
 
 // Inicialização: limpa o DOM, adiciona as transações e atualiza os valores
 const init = () => {
@@ -220,8 +237,6 @@ const addToTransactionsArray = (transactionName, transactionsAmounts, category, 
     cleanInputs();
 };
 
-
-
 // Limpa os campos de entrada após o envio do formulário
 const cleanInputs = () => {
     inputTransactionName.value = '';
@@ -229,28 +244,33 @@ const cleanInputs = () => {
 }
 
 // Manipulador do evento de envio do formulário
-  const handleFormSubmit = event => {
-        event.preventDefault();
-
-        const transactionName = inputTransactionName.value.trim();
-        const transactionsAmounts = inputTransactionAmount.value.trim();
-        const amount = Number(transactionsAmounts);
-        const category = document.querySelector('#category').value;
-        const selectedMonth = document.querySelector('#transaction-month').value;
-
-        const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
-
-        if (isSomeInputEmpty) {
-            alert('Por favor, preencha nome e valor da transação');
-            return;
-        }
-
-        addToTransactionsArray(transactionName, transactionsAmounts, category, selectedMonth);
-        init();
-        updateLocalStorage();
-        cleanInputs();
+const handleFormSubmit = event => {
+    event.preventDefault();
+  
+    const transactionName = inputTransactionName.value.trim();
+    const transactionsAmounts = inputTransactionAmount.value.trim();
+    const amount = Number(transactionsAmounts);
+    const selectedCategory = document.querySelector('#category-select').value; // Alterado
+  
+    const transactionType = document.querySelector('#transaction-type').value;
+    const selectedMonth = document.querySelector('#transaction-month').value;
+  
+    const isSomeInputEmpty = transactionName === '' || transactionsAmounts === '';
+  
+    if (isSomeInputEmpty) {
+      alert('Por favor, preencha nome e valor da transação');
+      return;
     }
-
-
+  
+    if (transactionType === 'income') {
+      addToTransactionsArray(transactionName, amount, 'income', selectedMonth);
+    } else if (transactionType === 'expense') {
+      addToTransactionsArray(transactionName, -amount, selectedCategory, selectedMonth); // Alterado
+    }
+  
+    init();
+    updateLocalStorage();
+    cleanInputs();
+  };
 
 form.addEventListener('submit', handleFormSubmit); // Escuta o envio do formulário
